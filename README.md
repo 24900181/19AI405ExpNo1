@@ -212,5 +212,5 @@ if __name__ == "__main__":
 
 ### RESULT: ###
 ~~
-       An AI Agent with PEAS Description with description. 
+       An AI Agent with PEAS Description is developed. 
 
