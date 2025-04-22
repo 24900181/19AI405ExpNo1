@@ -40,3 +40,177 @@
 <p>Treat unhealthy patients in each room. And check for the unhealthy patients in random room</p>
 <h3>STEP 5:</h3>
 <p>Measure the performance parameters: For each treatment performance incremented, for each movement performance decremented</p>
+
+### PROGRAM: ###
+~~~
+import random
+import time
+
+class Thing:
+    """
+    This represents any physical object that can appear in an Environment.
+    """
+    def is_alive(self):
+        """Things that are 'alive' should return true."""
+        return hasattr(self, "alive") and self.alive
+
+    def show_state(self):
+        """Display the agent's internal state. Subclasses should override."""
+        print("I don't know how to show_state.")
+
+class Agent(Thing):
+    """
+    An Agent is a subclass of Thing.
+    """
+    def __init__(self, program=None):
+        self.alive = True
+        self.performance = 0
+        self.program = program
+
+    def can_grab(self, thing):
+        """Return True if this agent can grab this thing. Override for appropriate behavior."""
+        return False
+
+def TableDrivenAgentProgram(table):
+    """
+    This agent selects an action based on the percept sequence.
+    To customize it, provide as table a dictionary of all {percept_sequence:action} pairs.
+    """
+    percepts = []
+
+    def program(percept):
+        percepts.append(percept)
+        action = table.get(tuple(percepts), None)
+        return action
+
+    return program
+
+loc_A, loc_B = (0, 0), (1, 0)  # The two locations for the Vacuum cleaning
+
+def TableDrivenVacuumAgent():
+    """
+    Tabular approach towards Vacuum cleaning
+    """
+    table = {
+        ((loc_A, "Clean"),): "Right",
+        ((loc_A, "Dirty"),): "Suck",
+        ((loc_B, "Clean"),): "Left",
+        ((loc_B, "Dirty"),): "Suck",
+        ((loc_A, "Dirty"), (loc_A, "Clean")): "Right",
+        ((loc_A, "Clean"), (loc_B, "Dirty")): "Suck",
+        ((loc_B, "Clean"), (loc_A, "Dirty")): "Suck",
+        ((loc_B, "Dirty"), (loc_B, "Clean")): "Left",
+        ((loc_A, "Dirty"), (loc_A, "Clean"), (loc_B, "Dirty")): "Suck",
+        ((loc_B, "Dirty"), (loc_B, "Clean"), (loc_A, "Dirty")): "Suck",
+    }
+    return Agent(TableDrivenAgentProgram(table))
+
+class Environment:
+    """Abstract class representing an Environment. 'Real' Environment classes will subclass this."""
+    def __init__(self):
+        self.things = []
+        self.agents = []
+
+    def percept(self, agent):
+        """Return the percept that the agent sees at this point."""
+        raise NotImplementedError
+
+    def execute_action(self, agent, action):
+        """Change the world to reflect this action."""
+        raise NotImplementedError
+
+    def default_location(self, thing):
+        """Default location to place a new thing with unspecified location."""
+        return None
+
+    def is_done(self):
+        """By default, we're done when we can't find a live agent."""
+        return not any(agent.is_alive() for agent in self.agents)
+
+    def step(self):
+        """Run the environment for one time step."""
+        if not self.is_done():
+            actions = []
+            for agent in self.agents:
+                if agent.alive:
+                    actions.append(agent.program(self.percept(agent)))
+                else:
+                    actions.append(None)
+            for (agent, action) in zip(self.agents, actions):
+                if action:
+                    self.execute_action(agent, action)
+
+    def run(self, steps=1000):
+        """Run the Environment for a given number of time steps."""
+        for step in range(steps):
+            if self.is_done():
+                return
+            self.step()
+
+    def add_thing(self, thing, location=None):
+        """Add a thing to the environment, setting its location."""
+        if not isinstance(thing, Thing):
+            thing = Agent(thing)
+        if thing in self.things:
+            print("Can't add the same thing twice")
+        else:
+            thing.location = location if location is not None else self.default_location(thing)
+            self.things.append(thing)
+            if isinstance(thing, Agent):
+                thing.performance = 0
+                self.agents.append(thing)
+
+    def delete_thing(self, thing):
+        """Remove a thing from the environment."""
+        try:
+            self.things.remove(thing)
+        except ValueError as e:
+            print(e)
+            print(" in Environment delete_thing")
+        if thing in self.agents:
+            self.agents.remove(thing)
+
+class TrivialVacuumEnvironment(Environment):
+    """This environment has two locations, A and B. Each can be clean or dirty."""
+    def __init__(self):
+        super().__init__()
+        self.status = {loc_A: random.choice(["Clean", "Dirty"]), loc_B: random.choice(["Clean", "Dirty"])}
+
+    def percept(self, agent):
+        """Returns the agent's location, and the location status (Dirty/Clean)."""
+        return agent.location, self.status[agent.location]
+
+    def execute_action(self, agent, action):
+        """Change agent's location and/or location's status; track performance."""
+        if action == "Right":
+            agent.location = loc_B
+            agent.performance -= 1
+        elif action == "Left":
+            agent.location = loc_A
+            agent.performance -= 1
+        elif action == "Suck":
+            if self.status[agent.location] == "Dirty":
+                agent.performance += 10
+                self.status[agent.location] = "Clean"
+
+    def default_location(self, thing):
+        return random.choice([loc_A, loc_B])
+
+if __name__ == "__main__":
+    agent = TableDrivenVacuumAgent()
+    environment = TrivialVacuumEnvironment()
+    environment.add_thing(agent)
+    print("Initial Status:", environment.status)
+    environment.run(steps=10)
+    print("Final Status:", environment.status)
+    print("Agent Performance:", agent.performance)
+~~~
+
+### OUTPUT: ###
+
+![Screenshot 2025-04-22 142406](https://github.com/user-attachments/assets/53fac588-2b20-4f98-be88-1165bd3caf0b)
+
+### RESULT: ###
+~~
+       An AI Agent with PEAS Description with description. 
+
